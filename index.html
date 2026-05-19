@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1f6f68">
+  <title>糖伴记 | 血糖与胰岛素记录</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <div class="hero__copy">
+        <p class="eyebrow">家庭糖尿病管理 MVP</p>
+        <h1>糖伴记</h1>
+        <p class="hero__lead">把“测了多少、打了多少、什么时候异常”变成 10 秒钟能完成的记录。</p>
+        <div class="hero__actions" aria-label="快捷操作">
+          <button class="primary-action" data-jump="glucose">测血糖</button>
+          <button class="ghost-action" data-jump="insulin">记胰岛素</button>
+          <button class="ghost-action" data-jump="report">复诊周报</button>
+        </div>
+      </div>
+      <div class="hero__card" aria-label="今日概览">
+        <span class="pulse-dot"></span>
+        <p>今日记录</p>
+        <strong id="hero-today-count">0 条</strong>
+        <small id="hero-next-reminder">暂无提醒</small>
+      </div>
+    </header>
+
+    <aside id="critical-alert" class="critical-alert hidden" aria-live="polite"></aside>
+
+    <main class="app-grid">
+      <section class="panel capture-card" aria-labelledby="capture-title">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">快速记录</p>
+            <h2 id="capture-title">现在发生了什么？</h2>
+          </div>
+          <button id="fill-now" class="small-button" type="button">填入当前时间</button>
+        </div>
+
+        <div class="segmented" role="tablist" aria-label="记录类型">
+          <button class="segment is-active" type="button" data-tab="glucose">血糖</button>
+          <button class="segment" type="button" data-tab="insulin">胰岛素</button>
+          <button class="segment" type="button" data-tab="reminder">提醒</button>
+        </div>
+
+        <form id="glucose-form" class="record-form" data-panel="glucose">
+          <label>
+            <span>血糖值</span>
+            <div class="inline-input">
+              <input id="glucose-value" type="number" inputmode="decimal" min="0" step="0.1" placeholder="例如 6.8" required>
+              <select id="glucose-unit" aria-label="血糖单位">
+                <option value="mmol/L">mmol/L</option>
+                <option value="mg/dL">mg/dL</option>
+              </select>
+            </div>
+          </label>
+
+          <label>
+            <span>测量时间点</span>
+            <select id="glucose-context" required>
+              <option>空腹</option>
+              <option>早餐前</option>
+              <option>早餐后2小时</option>
+              <option>午餐前</option>
+              <option>午餐后2小时</option>
+              <option>晚餐前</option>
+              <option>晚餐后2小时</option>
+              <option>睡前</option>
+              <option>夜间</option>
+              <option>运动前</option>
+              <option>运动后</option>
+              <option>不确定</option>
+            </select>
+          </label>
+
+          <label>
+            <span>时间</span>
+            <input id="glucose-time" type="datetime-local" required>
+          </label>
+
+          <fieldset class="chip-field">
+            <legend>影响因素</legend>
+            <label><input type="checkbox" name="glucose-tag" value="吃多了">吃多了</label>
+            <label><input type="checkbox" name="glucose-tag" value="运动">运动</label>
+            <label><input type="checkbox" name="glucose-tag" value="生病/感染">生病/感染</label>
+            <label><input type="checkbox" name="glucose-tag" value="饮酒">饮酒</label>
+            <label><input type="checkbox" name="glucose-tag" value="低血糖症状">低血糖症状</label>
+            <label><input type="checkbox" name="glucose-tag" value="漏打/晚打">漏打/晚打</label>
+          </fieldset>
+
+          <label>
+            <span>备注</span>
+            <textarea id="glucose-note" rows="2" placeholder="例如：早餐多吃了一碗粥"></textarea>
+          </label>
+
+          <div class="form-actions">
+            <button class="primary-action" type="submit">保存血糖</button>
+            <button class="ghost-action" type="button" id="post-meal-reminder">饭后2小时提醒</button>
+          </div>
+        </form>
+
+        <form id="insulin-form" class="record-form hidden" data-panel="insulin">
+          <label>
+            <span>胰岛素名称</span>
+            <input id="insulin-name" type="text" placeholder="例如 门冬胰岛素 / 甘精胰岛素" list="insulin-presets" required>
+            <datalist id="insulin-presets">
+              <option value="门冬胰岛素">
+              <option value="赖脯胰岛素">
+              <option value="甘精胰岛素">
+              <option value="地特胰岛素">
+              <option value="德谷胰岛素">
+              <option value="预混胰岛素">
+            </datalist>
+          </label>
+
+          <div class="two-col">
+            <label>
+              <span>剂量</span>
+              <div class="inline-input">
+                <input id="insulin-dose" type="number" inputmode="decimal" min="0" step="0.5" placeholder="例如 8" required>
+                <span class="unit-pill">U</span>
+              </div>
+            </label>
+            <label>
+              <span>类型</span>
+              <select id="insulin-kind">
+                <option>餐时/速效</option>
+                <option>基础/长效</option>
+                <option>预混</option>
+                <option>纠正剂量</option>
+                <option>不确定</option>
+              </select>
+            </label>
+          </div>
+
+          <label>
+            <span>注射时间</span>
+            <input id="insulin-time" type="datetime-local" required>
+          </label>
+
+          <label>
+            <span>注射部位</span>
+            <select id="insulin-site">
+              <option>腹部左侧</option>
+              <option>腹部右侧</option>
+              <option>左上臂</option>
+              <option>右上臂</option>
+              <option>左大腿</option>
+              <option>右大腿</option>
+              <option>臀部</option>
+              <option>未记录</option>
+            </select>
+          </label>
+
+          <label>
+            <span>备注</span>
+            <textarea id="insulin-note" rows="2" placeholder="例如：比平时晚打 30 分钟"></textarea>
+          </label>
+
+          <div class="form-actions">
+            <button class="primary-action" type="submit">保存胰岛素</button>
+            <button class="ghost-action" type="button" id="copy-last-dose">复制上次剂量</button>
+          </div>
+        </form>
+
+        <form id="reminder-form" class="record-form hidden" data-panel="reminder">
+          <label>
+            <span>提醒事项</span>
+            <input id="reminder-label" type="text" placeholder="例如 睡前测血糖" required>
+          </label>
+          <label>
+            <span>每天提醒时间</span>
+            <input id="reminder-time" type="time" required>
+          </label>
+          <div class="form-actions">
+            <button class="primary-action" type="submit">添加提醒</button>
+            <button class="ghost-action" type="button" id="enable-notifications">开启浏览器通知</button>
+          </div>
+          <p class="helper-text">提醒只在本页面打开时可靠触发；真正上线微信小程序时可接入订阅消息。</p>
+        </form>
+      </section>
+
+      <section class="panel dashboard-card" aria-labelledby="dashboard-title">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">趋势看板</p>
+            <h2 id="dashboard-title">今天和最近 14 天</h2>
+          </div>
+          <button id="seed-demo" class="small-button" type="button">载入示例</button>
+        </div>
+
+        <div class="metric-grid">
+          <article class="metric">
+            <span>最近血糖</span>
+            <strong id="metric-last-glucose">暂无</strong>
+            <small id="metric-last-status">先记录一次</small>
+          </article>
+          <article class="metric">
+            <span>今日胰岛素</span>
+            <strong id="metric-insulin-today">0 U</strong>
+            <small>含所有已记录剂量</small>
+          </article>
+          <article class="metric">
+            <span>7日达标率</span>
+            <strong id="metric-range-rate">--</strong>
+            <small>按医生目标粗略统计</small>
+          </article>
+          <article class="metric">
+            <span>空腹均值</span>
+            <strong id="metric-fasting-average">--</strong>
+            <small>最近 7 天</small>
+          </article>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-title">
+            <div>
+              <strong>血糖趋势</strong>
+              <span id="chart-caption">今日血糖趋势 · 纵坐标 1 mmol/L 刻度</span>
+            </div>
+            <div class="chart-range" aria-label="血糖趋势范围">
+              <button class="is-active" type="button" data-chart-range="today">今日</button>
+              <button type="button" data-chart-range="week">本周</button>
+              <button type="button" data-chart-range="month">本月</button>
+            </div>
+          </div>
+          <div id="glucose-chart" class="chart-empty">记录两次血糖后显示趋势图</div>
+        </div>
+
+        <div class="section-split">
+          <div>
+            <h3>今日时间线</h3>
+            <div id="today-list" class="timeline empty-state">今天还没有记录。</div>
+          </div>
+          <div>
+            <h3>提醒</h3>
+            <div id="reminder-list" class="reminder-list empty-state">暂无提醒。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel report-card" id="report" aria-labelledby="report-title">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">给医生看的版本</p>
+            <h2 id="report-title">复诊周报</h2>
+          </div>
+          <div class="button-row">
+            <button id="copy-report" class="small-button" type="button">复制摘要</button>
+            <button id="export-csv" class="small-button" type="button">导出 CSV</button>
+            <button id="print-report" class="small-button" type="button">打印/PDF</button>
+          </div>
+        </div>
+        <div id="weekly-report" class="weekly-report"></div>
+      </section>
+
+      <section class="panel settings-card" aria-labelledby="settings-title">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">安全边界</p>
+            <h2 id="settings-title">医生目标与用药规则</h2>
+          </div>
+          <span class="lock-pill">仅本地保存</span>
+        </div>
+
+        <form id="settings-form" class="settings-grid">
+          <label>
+            <span>患者称呼</span>
+            <input id="patient-name" type="text" placeholder="例如 爸爸 / 妈妈">
+          </label>
+          <label>
+            <span>默认单位</span>
+            <select id="default-unit">
+              <option value="mmol/L">mmol/L</option>
+              <option value="mg/dL">mg/dL</option>
+            </select>
+          </label>
+          <label>
+            <span>低血糖阈值 mmol/L</span>
+            <input id="low-threshold" type="number" min="1" max="10" step="0.1">
+          </label>
+          <label>
+            <span>餐前目标上限 mmol/L</span>
+            <input id="premeal-high" type="number" min="3" max="20" step="0.1">
+          </label>
+          <label>
+            <span>餐后2h目标上限 mmol/L</span>
+            <input id="postmeal-high" type="number" min="3" max="25" step="0.1">
+          </label>
+          <label>
+            <span>明显高血糖提醒 mmol/L</span>
+            <input id="urgent-high" type="number" min="8" max="35" step="0.1">
+          </label>
+          <label class="wide">
+            <span>医生给出的胰岛素调整规则/复诊备注</span>
+            <textarea id="doctor-plan" rows="4" placeholder="例如：空腹连续 3 天 > 7.8 mmol/L 时联系医生；低血糖按医生给出的 15-15 方案处理。"></textarea>
+          </label>
+          <div class="form-actions wide">
+            <button class="primary-action" type="submit">保存设置</button>
+            <button id="clear-data" class="danger-button" type="button">清空本地数据</button>
+          </div>
+        </form>
+
+        <div class="medical-note">
+          <strong>重要提醒</strong>
+          <p>本工具只帮助记录和整理信息，不自动推荐胰岛素剂量。若出现意识障碍、无法进食、持续低血糖、酮症风险或血糖反复显著异常，请按医生方案处理并及时就医。</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <template id="timeline-item-template">
+    <article class="timeline-item">
+      <div class="timeline-dot"></div>
+      <div>
+        <strong></strong>
+        <p></p>
+        <small></small>
+      </div>
+      <button type="button">删除</button>
+    </article>
+  </template>
+</body>
+</html>
