@@ -6,8 +6,21 @@
   <meta name="theme-color" content="#1f6f68">
   <title>糖伴记 | 血糖与胰岛素记录</title>
   <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
+  <link rel="apple-touch-icon" href="./icon-192.png">
   <link rel="stylesheet" href="./styles.css">
   <script src="./app.js" defer></script>
+  <script>
+    // 注册 Service Worker，支持离线使用
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {
+          // 静默失败：注册不成功也不影响主功能
+        });
+      });
+    }
+  </script>
 </head>
 <body>
   <div class="page-shell">
